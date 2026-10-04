@@ -8,6 +8,7 @@ import {
   calculateScenario, formatDuration, type Frequency, type LoanTerms,
   type PrepaymentPlan, type ScenarioResult, type Strategy,
 } from './lib/calculator'
+import { parseNumberDraft } from './lib/input'
 import './App.css'
 import './features.css'
 
@@ -34,9 +35,11 @@ function App(){
   const [plansOpen,setPlansOpen]=useState(false)
   const plansDialogRef=useRef<HTMLDialogElement>(null)
   const active=scenarios.find(s=>s.id===activeId)??scenarios[0]??initialScenario
-  const result=useMemo(()=>calculateScenario(active.terms,active.plans),[active])
-  const baseline=useMemo(()=>calculateScenario(active.terms,[]),[active.terms])
-  const allResults=useMemo(()=>new Map(scenarios.map(s=>[s.id,calculateScenario(s.terms,s.plans)])),[scenarios])
+  const calculationScenarios=useDebouncedValue(scenarios,180)
+  const calculationActive=calculationScenarios.find(s=>s.id===activeId)??active
+  const result=useMemo(()=>calculateScenario(calculationActive.terms,calculationActive.plans),[calculationActive])
+  const baseline=useMemo(()=>calculateScenario(calculationActive.terms,[]),[calculationActive.terms])
+  const allResults=useMemo(()=>new Map(calculationScenarios.map(s=>[s.id,calculateScenario(s.terms,s.plans)])),[calculationScenarios])
   const chartScenario=scenarios.find(s=>s.id===chartScenarioId)??active
   const chartResult=allResults.get(chartScenario.id)??result
 
@@ -123,9 +126,8 @@ function NumberField({label,value,suffix,onChange,wide,hint,step}: {label:string
     const pattern=decimal?/^\d*(?:[.,]\d*)?$/:/^\d*$/
     if(!pattern.test(raw))return
     setDraft(raw)
-    if(raw===''||raw.endsWith('.')||raw.endsWith(','))return
-    const parsed=Number(raw.replace(',','.'))
-    if(Number.isFinite(parsed))onChange(parsed)
+    const parsed=parseNumberDraft(raw)
+    if(parsed!==null)onChange(parsed)
   }
   const handleBlur=()=>{
     if(draft===''){setDraft('0');onChange(0);return}
@@ -155,5 +157,10 @@ function ScheduleYear({year,rows,defaultOpen}:{year:string;rows:ScenarioResult['
   return <details open={open} onToggle={event=>setOpen(event.currentTarget.open)}><summary><span>{year} год</span><b>{rows.length} операций</b></summary>{open&&<div className="table-scroll"><table><thead><tr><th>Дата / тип</th><th>Обязательный</th><th>Досрочный</th><th>Общий платёж</th><th>Проценты</th><th>В тело</th><th>Остаток</th><th>Новый платёж</th><th>Осталось</th></tr></thead><tbody>{rows.map((row,rowIndex)=>{const next=rows[rowIndex+1];const month=row.date.slice(0,7);const endOfMonth=!next||next.date.slice(0,7)!==month;return <FragmentRow key={row.id} row={row} endOfMonth={endOfMonth} monthTotal={monthTotals.get(month)??0}/>})}</tbody></table></div>}</details>
 }
 function groupByYear(rows:ScenarioResult['schedule']){const map=new Map<string,ScenarioResult['schedule']>();for(const row of rows){const year=row.date.slice(0,4);map.set(year,[...(map.get(year)??[]),row])}return map}
+function useDebouncedValue<T>(value:T,delay:number){
+  const [debounced,setDebounced]=useState(value)
+  useEffect(()=>{const timer=window.setTimeout(()=>setDebounced(value),delay);return()=>window.clearTimeout(timer)},[value,delay])
+  return debounced
+}
 
 export default App
