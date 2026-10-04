@@ -11,7 +11,7 @@
 .table-scroll{max-height:min(68vh,620px);overflow:auto}.comparison-table thead th,.table-scroll thead th{position:sticky;top:0;z-index:3;box-shadow:0 1px 0 var(--line)}
 .sticky-payment{min-width:0;justify-content:flex-start;gap:16px}.sticky-payment-metric{display:flex;flex-direction:column;gap:4px}.sticky-payment>i{width:1px;height:34px;background:rgba(255,255,255,.16)}.sticky-payment span{font-size:11px}.sticky-payment strong{font-size:17px}@media(max-width:900px){.sticky-payment{justify-content:space-between}.sticky-payment-metric{flex:1}.sticky-payment-metric:last-child{align-items:flex-end}.sticky-payment strong{font-size:16px}}
 @media print{.topbar,.sticky-payment,.form-card,.plans-section,.prepayment-launcher,.plans-dialog,.scenario-chips,.table-actions,.heading-actions,.disclaimer{display:none!important}body{background:white}.result-card{print-color-adjust:exact}.workspace,.insights-grid{grid-template-columns:1fr}.card{box-shadow:none;break-inside:avoid}main{width:100%;padding:0}}
-.plans-dialog::backdrop{backdrop-filter:none}
+.plans-dialog::backdrop{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 .plans-modal-header,.plans-modal-footer{flex:0 0 auto}
 .plans-modal-body{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .app-shell.modal-open .topbar{backdrop-filter:none}
