@@ -81,7 +81,7 @@ function App(){
   const firstAngle=(chartSlices[0]/chartTotal)*360
   const secondAngle=firstAngle+(chartSlices[1]/chartTotal)*360
 
-  return <div className="app-shell">
+  return <div className={`app-shell ${plansOpen?'modal-open':''}`}>
     <header className="topbar"><div className="brand"><span className="brand-mark"><House size={19}/></span><div><strong>Ипотечный планировщик</strong><span>Личный расчёт сценариев</span></div></div><div className="topbar-actions"><label className="scenario-picker"><span className="scenario-dot"/><select value={activeId} onChange={e=>{setActiveId(e.target.value);setChartScenarioId(e.target.value)}}>{scenarios.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select><ChevronDown size={16}/></label><span className={`save-state ${saved?'is-saved':''}`}>{saved?'Сохранено':'Сохраняем…'}</span></div></header>
     <div className="sticky-payment" aria-live="polite"><div className="sticky-payment-metric"><span>Текущий платёж</span><strong>{exactMoney.format(result.currentPayment)}</strong></div><i/><div className="sticky-payment-metric"><span>Срок до закрытия</span><strong>{formatDuration(result.durationMonths)}</strong></div></div>
     <main>
@@ -108,7 +108,7 @@ function App(){
 
       <section className="comparison card"><div className="section-heading"><div><span className="step">04</span><div><h2>Сравнение сценариев</h2><p>Выберите до четырёх вариантов</p></div></div><button className="ghost-button" onClick={duplicateScenario}><Copy size={16}/>Копировать текущий</button></div><div className="scenario-chips">{scenarios.map(s=><button key={s.id} className={compareIds.includes(s.id)?'selected':''} onClick={()=>toggleCompare(s.id)}><span>{compareIds.includes(s.id)&&<Check size={14}/>}</span>{s.name}</button>)}</div>{compareIds.length>0?<ComparisonTable scenarios={scenarios.filter(s=>compareIds.includes(s.id))} results={allResults}/>:<div className="comparison-empty"><ChartNoAxesColumnIncreasing size={22}/>Выберите сценарии для сравнения</div>}</section>
 
-      <section className="schedule card"><div className="section-heading"><div><span className="step">05</span><div><h2>Подробный график</h2><p>{result.schedule.length} операций · группировка по годам</p></div></div><div className="table-actions"><button className="ghost-button" onClick={exportCsv}><Download size={16}/>CSV</button><button className="ghost-button" onClick={()=>window.print()}><Printer size={16}/>PDF</button></div></div><div className="years">{[...years.entries()].map(([year,rows],index)=><details key={year} open={index===0}><summary><span>{year} год</span><b>{rows.length} операций</b></summary><div className="table-scroll"><table><thead><tr><th>Дата / тип</th><th>Обязательный</th><th>Досрочный</th><th>Общий платёж</th><th>Проценты</th><th>В тело</th><th>Остаток</th><th>Новый платёж</th><th>Осталось</th></tr></thead><tbody>{rows.map((row,rowIndex)=>{const next=rows[rowIndex+1];const month=row.date.slice(0,7);const endOfMonth=!next||next.date.slice(0,7)!==month;const monthRows=result.schedule.filter(r=>r.date.startsWith(month));const total=monthRows.reduce((sum,r)=>sum+r.totalPayment,0);return <FragmentRow key={row.id} row={row} endOfMonth={endOfMonth} monthTotal={total}/>} )}</tbody></table></div></details>)}</div></section>
+      <section className="schedule card"><div className="section-heading"><div><span className="step">05</span><div><h2>Подробный график</h2><p>{result.schedule.length} операций · группировка по годам</p></div></div><div className="table-actions"><button className="ghost-button" onClick={exportCsv}><Download size={16}/>CSV</button><button className="ghost-button" onClick={()=>window.print()}><Printer size={16}/>PDF</button></div></div><div className="years">{[...years.entries()].map(([year,rows],index)=><ScheduleYear key={year} year={year} rows={rows} defaultOpen={index===0}/>)}</div></section>
       <p className="disclaimer">Расчёт является прогнозным и может отличаться от графика конкретного банка и условий кредитного договора.</p>
     </main>
   </div>
@@ -145,6 +145,15 @@ function ComparisonTable({scenarios,results}:{scenarios:Scenario[];results:Map<s
 function CompareRow({label,values}:{label:string;values:string[]}){return <tr><th>{label}</th>{values.map((v,i)=><td key={`${v}-${i}`}>{v}</td>)}</tr>}
 
 function FragmentRow({row,endOfMonth,monthTotal}:{row:ScenarioResult['schedule'][number];endOfMonth:boolean;monthTotal:number}){return <><tr><td><strong>{dateFormat.format(new Date(`${row.date}T00:00:00Z`))}</strong><span className={`type-tag ${row.type}`}>{row.type==='regular'?'Обязательный':'Досрочный'}</span></td><td>{row.regularPayment?exactMoney.format(row.regularPayment):'—'}</td><td>{row.extraPayment?exactMoney.format(row.extraPayment):'—'}</td><td><b>{exactMoney.format(row.totalPayment)}</b></td><td>{row.interest?exactMoney.format(row.interest):'—'}</td><td>{exactMoney.format(row.regularPrincipal+row.extraPrincipal)}</td><td>{exactMoney.format(row.balance)}</td><td>{exactMoney.format(row.paymentAfter)}</td><td>{formatDuration(row.remainingMonths)}</td></tr>{endOfMonth&&<tr className="month-total"><td colSpan={3}>Итого за {new Intl.DateTimeFormat('ru-RU',{month:'long',year:'numeric'}).format(new Date(`${row.date.slice(0,7)}-01T00:00:00Z`))}</td><td>{exactMoney.format(monthTotal)}</td><td colSpan={5}/></tr>}</>}
+function ScheduleYear({year,rows,defaultOpen}:{year:string;rows:ScenarioResult['schedule'];defaultOpen:boolean}){
+  const [open,setOpen]=useState(defaultOpen)
+  const monthTotals=useMemo(()=>{
+    const totals=new Map<string,number>()
+    for(const row of rows){const month=row.date.slice(0,7);totals.set(month,(totals.get(month)??0)+row.totalPayment)}
+    return totals
+  },[rows])
+  return <details open={open} onToggle={event=>setOpen(event.currentTarget.open)}><summary><span>{year} год</span><b>{rows.length} операций</b></summary>{open&&<div className="table-scroll"><table><thead><tr><th>Дата / тип</th><th>Обязательный</th><th>Досрочный</th><th>Общий платёж</th><th>Проценты</th><th>В тело</th><th>Остаток</th><th>Новый платёж</th><th>Осталось</th></tr></thead><tbody>{rows.map((row,rowIndex)=>{const next=rows[rowIndex+1];const month=row.date.slice(0,7);const endOfMonth=!next||next.date.slice(0,7)!==month;return <FragmentRow key={row.id} row={row} endOfMonth={endOfMonth} monthTotal={monthTotals.get(month)??0}/>})}</tbody></table></div>}</details>
+}
 function groupByYear(rows:ScenarioResult['schedule']){const map=new Map<string,ScenarioResult['schedule']>();for(const row of rows){const year=row.date.slice(0,4);map.set(year,[...(map.get(year)??[]),row])}return map}
 
 export default App
