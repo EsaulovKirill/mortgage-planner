@@ -1,3 +1,3 @@
 # Ипотечный планировщик
 
-**[Открыть приложение](https://mortgage-planner-kirill.esaulovhome.chatgpt.site)**
+**[Открыть приложение](https://esaulovkirill.github.io/mortgage-planner/)**
